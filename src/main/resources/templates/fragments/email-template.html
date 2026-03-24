@@ -57,7 +57,7 @@
                     <tr>
                         <td style="width: 72px; color: #3182F6; font-weight: 700; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">TO-BE</td>
                         <td style="padding: 5px 0;">
-                            <span th:utext="${response.spf().recommendedRecordHighlighted()}"></span>
+                            <span th:utext="${response.spf().recommendedRecordForEmail()}"></span>
                         </td>
                     </tr>
                 </table>
@@ -102,11 +102,9 @@
                             <span th:text="${response.dkim().dnsValueAbbreviated()}"></span>
                             &nbsp;<strong>(변경 없음)</strong>
                         </span>
-                        <!-- NEW: 신규 생성 -->
+                        <!-- NEW: 신규 생성 — 전체 값 표시 (중략 없음) -->
                         <th:block th:unless="${response.dkim().status().name() == 'EXISTING'}">
-                            <strong style="color: #3182F6;" th:text="${response.dkim().dnsValueAbbreviated()}"></strong>
-                            <br>
-                            <span style="font-size: 12px; color: #6B7684;">※ 전체 값은 결과 탭에서 복사하세요.</span>
+                            <strong style="color: #3182F6;" th:text="${response.dkim().dnsValue()}"></strong>
                         </th:block>
                     </td>
                 </tr>
