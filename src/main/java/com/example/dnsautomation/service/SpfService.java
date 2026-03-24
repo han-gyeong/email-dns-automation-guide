@@ -63,19 +63,51 @@ public class SpfService {
                 .map(ip -> "ip4:" + ip)
                 .collect(Collectors.joining(" "));
 
-        // 기존 all 정책 앞에 누락된 IP 삽입 (기존 정책 보존)
-        String recommended;
-        if (existing.contains(" ~all")) {
-            recommended = existing.replace(" ~all", " " + additions + " ~all");
-        } else if (existing.contains(" -all")) {
-            recommended = existing.replace(" -all", " " + additions + " -all");
-        } else if (existing.contains(" +all")) {
-            recommended = existing.replace(" +all", " " + additions + " +all");
-        } else {
-            recommended = existing + " " + additions;
+        // 마지막 ip4: 토큰 바로 뒤에 삽입 (include: 앞)
+        // 예) v=spf1 ip4:A ip4:B include:X ~all → v=spf1 ip4:A ip4:B ip4:NEW include:X ~all
+        String recommended = insertAfterLastIp4(existing, additions);
+        if (recommended == null) {
+            // ip4: 토큰이 없으면 all 정책 앞에 삽입
+            if (existing.contains(" ~all")) {
+                recommended = existing.replace(" ~all", " " + additions + " ~all");
+            } else if (existing.contains(" -all")) {
+                recommended = existing.replace(" -all", " " + additions + " -all");
+            } else if (existing.contains(" +all")) {
+                recommended = existing.replace(" +all", " " + additions + " +all");
+            } else {
+                recommended = existing + " " + additions;
+            }
         }
 
         return SpfResult.modified(existing, recommended, missingIps);
+    }
+
+    /**
+     * 기존 SPF 레코드에서 마지막 ip4: 토큰 바로 뒤에 additions를 삽입.
+     * ip4: 토큰이 없으면 null 반환 (호출부에서 fallback 처리).
+     */
+    private String insertAfterLastIp4(String existing, String additions) {
+        String[] tokens = existing.split("\\s+");
+        int lastIp4Index = -1;
+        for (int i = 0; i < tokens.length; i++) {
+            if (tokens[i].startsWith("ip4:")) {
+                lastIp4Index = i;
+            }
+        }
+        if (lastIp4Index < 0) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < tokens.length; i++) {
+            sb.append(tokens[i]);
+            if (i == lastIp4Index) {
+                sb.append(" ").append(additions);
+            }
+            if (i < tokens.length - 1) {
+                sb.append(" ");
+            }
+        }
+        return sb.toString();
     }
 
     /**

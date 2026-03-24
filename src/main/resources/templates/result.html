@@ -86,21 +86,38 @@
     function copyText(btn) {
         const valueEl = btn.closest('.record-value');
         const text = valueEl.querySelector('.copy-target').textContent.trim();
-        navigator.clipboard.writeText(text).then(() => {
+
+        function onSuccess() {
             btn.textContent = '복사됨';
             setTimeout(() => { btn.textContent = '복사'; }, 1500);
-        });
+        }
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(onSuccess);
+        } else {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onSuccess();
+        }
     }
 
     function copyEmailTemplate(btn) {
         const body = document.querySelector('.email-body');
-        // 복사 버튼 텍스트가 innerText에 포함되지 않도록 임시 숨김
         const copyBtns = body.querySelectorAll('.copy-btn');
-        copyBtns.forEach(b => b.style.visibility = 'hidden');
-        const text = body.innerText.trim();
-        copyBtns.forEach(b => b.style.visibility = '');
+        copyBtns.forEach(b => b.style.display = 'none');
 
-        navigator.clipboard.writeText(text).then(() => {
+        const htmlContent = `<html><body style="font-family:'Pretendard',Arial,sans-serif;font-size:14px;line-height:1.8;color:#191F28;max-width:680px;">${body.innerHTML}</body></html>`;
+        const textContent = body.innerText.trim();
+
+        copyBtns.forEach(b => b.style.display = '');
+
+        function onSuccess() {
             btn.textContent = '복사됨!';
             btn.style.background = '#1EAF5F';
             btn.style.color = 'white';
@@ -109,7 +126,26 @@
                 btn.style.background = '#F2F4F6';
                 btn.style.color = '#4E5968';
             }, 2000);
-        });
+        }
+
+        if (navigator.clipboard && navigator.clipboard.write) {
+            const item = new ClipboardItem({
+                'text/html':  new Blob([htmlContent],  { type: 'text/html' }),
+                'text/plain': new Blob([textContent], { type: 'text/plain' })
+            });
+            navigator.clipboard.write([item]).then(onSuccess);
+        } else {
+            // fallback: execCommand copy (plain text only)
+            const ta = document.createElement('textarea');
+            ta.value = textContent;
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            onSuccess();
+        }
     }
 </script>
 

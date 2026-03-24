@@ -32,48 +32,44 @@ public record SpfResult(
     /**
      * AS-IS 표시용 — 레코드가 길면 앞부분 + [중략] + all 정책만 남겨 요약
      */
+    /**
+     * AS-IS 표시용 — 짧으면 그대로, 길면 v=spf1 [중략] ~all
+     */
     public String currentRecordAbbreviated() {
         if (currentRecord == null) return null;
         if (currentRecord.length() <= 80) return currentRecord;
-        String allPolicy = "";
-        if (currentRecord.contains(" ~all")) allPolicy = " ~all";
-        else if (currentRecord.contains(" -all")) allPolicy = " -all";
-        else if (currentRecord.contains(" +all")) allPolicy = " +all";
-        return currentRecord.substring(0, 55) + " [중략]" + allPolicy;
+        return "v=spf1 [중략]" + extractAllPolicy(currentRecord);
     }
 
     /**
      * 이메일 템플릿 전용 TO-BE:
-     * - 기존 IP 부분은 [중략] 처리
-     * - 추가된 IP만 <strong> 볼드로 표시
-     * - 신규(기존 없음) 케이스는 전체 볼드
+     * - 신규(기존 없음): 전체 볼드, 축약 없음
+     * - 기존 있음 + 추가 IP: v=spf1 [중략] ip4:NEW1 ip4:NEW2 ~all (추가분 볼드)
+     * - 변경 없음: currentRecordAbbreviated() 그대로
      */
     public String recommendedRecordForEmail() {
         if (recommendedRecord == null) return null;
 
-        // 추가 IP 없음(UNCHANGED) → 기존 축약본 그대로
         if (addedIps == null || addedIps.isEmpty()) {
             return currentRecordAbbreviated() != null ? currentRecordAbbreviated() : recommendedRecord;
         }
 
-        // 신규(기존 레코드 없음) → 전체 볼드, 축약 없음
         if (currentRecord == null) {
             return "<strong style=\"color:#3182F6\">" + recommendedRecord + "</strong>";
         }
-
-        // 기존 있음 + 추가 IP 있음 → 기존 부분 [중략] + 추가 IP 볼드
-        String abbreviated = currentRecordAbbreviated();
-        String allPolicy = "";
-        String base = abbreviated;
-        if (abbreviated.endsWith(" ~all")) { allPolicy = " ~all"; base = abbreviated.substring(0, abbreviated.length() - 5); }
-        else if (abbreviated.endsWith(" -all")) { allPolicy = " -all"; base = abbreviated.substring(0, abbreviated.length() - 5); }
-        else if (abbreviated.endsWith(" +all")) { allPolicy = " +all"; base = abbreviated.substring(0, abbreviated.length() - 5); }
 
         String boldIps = addedIps.stream()
                 .map(ip -> "<strong style=\"color:#3182F6\">ip4:" + ip + "</strong>")
                 .collect(java.util.stream.Collectors.joining(" "));
 
-        return base + " " + boldIps + allPolicy;
+        return "v=spf1 [중략] " + boldIps + extractAllPolicy(recommendedRecord);
+    }
+
+    private String extractAllPolicy(String record) {
+        if (record.contains(" ~all")) return " ~all";
+        if (record.contains(" -all")) return " -all";
+        if (record.contains(" +all")) return " +all";
+        return "";
     }
 
     /**
