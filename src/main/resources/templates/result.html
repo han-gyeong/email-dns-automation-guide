@@ -48,9 +48,18 @@
 
     <div class="card">
         <!-- Tabs -->
-        <div class="tabs">
+        <div class="tabs" style="display: flex; align-items: center;">
             <button class="tab-btn active" onclick="switchTab('result', this)">결과</button>
             <button class="tab-btn" onclick="switchTab('template', this)">안내 템플릿</button>
+            <button id="copy-template-btn"
+                    onclick="copyEmailTemplate(this)"
+                    style="display: none; margin-left: auto; padding: 6px 14px; font-size: 12px; font-weight: 600;
+                           background: #F2F4F6; color: #4E5968; border: none; border-radius: 8px; cursor: pointer;
+                           transition: background 0.15s, color 0.15s;"
+                    onmouseover="this.style.background='#3182F6';this.style.color='white';"
+                    onmouseout="this.style.background='#F2F4F6';this.style.color='#4E5968';">
+                전체 복사
+            </button>
         </div>
 
         <!-- Tab: 결과 -->
@@ -71,6 +80,7 @@
         document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
         document.getElementById('tab-' + name).classList.add('active');
         btn.classList.add('active');
+        document.getElementById('copy-template-btn').style.display = (name === 'template') ? 'block' : 'none';
     }
 
     function copyText(btn) {
@@ -79,6 +89,26 @@
         navigator.clipboard.writeText(text).then(() => {
             btn.textContent = '복사됨';
             setTimeout(() => { btn.textContent = '복사'; }, 1500);
+        });
+    }
+
+    function copyEmailTemplate(btn) {
+        const body = document.querySelector('.email-body');
+        // 복사 버튼 텍스트가 innerText에 포함되지 않도록 임시 숨김
+        const copyBtns = body.querySelectorAll('.copy-btn');
+        copyBtns.forEach(b => b.style.visibility = 'hidden');
+        const text = body.innerText.trim();
+        copyBtns.forEach(b => b.style.visibility = '');
+
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = '복사됨!';
+            btn.style.background = '#1EAF5F';
+            btn.style.color = 'white';
+            setTimeout(() => {
+                btn.textContent = '전체 복사';
+                btn.style.background = '#F2F4F6';
+                btn.style.color = '#4E5968';
+            }, 2000);
         });
     }
 </script>
