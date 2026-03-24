@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="emailTemplate(response)">
+
+    <!-- 메일 제목 표시 -->
+    <div class="email-subject-bar">
+        <strong>제목:</strong>&nbsp;
+        [DNS 설정 안내] <span th:text="${response.domain()}"></span> 이메일 발송을 위한 DNS 레코드 설정 요청
+    </div>
+
+    <!-- 메일 본문: 텍스트 형식 -->
+    <div class="email-wrapper">
+        <div class="email-body" style="font-family: 'Pretendard', sans-serif; font-size: 14px; line-height: 1.9; color: #191F28;">
+
+            <p>안녕하세요,</p>
+            <p>
+                <strong th:text="${response.domain()}"></strong> 도메인의 이메일 정상 발송을 위해
+                아래 DNS 레코드 설정을 요청드립니다.
+                <br>
+                각 항목의 <strong>TO-BE 값</strong>을 DNS 관리 페이지에 등록해 주세요.
+            </p>
+
+            <br>
+
+            <!-- ── 1. SPF ── -->
+            <p style="font-size: 15px; font-weight: 700; border-bottom: 1px solid #E5E8EB; padding-bottom: 6px; margin-bottom: 12px;">
+                1. SPF 레코드
+                <span th:switch="${response.spf().status().name()}" style="font-size: 12px; font-weight: 600; margin-left: 8px;">
+                    <span th:case="'NEW'"           style="color:#FF8A00;">[신규 등록 필요]</span>
+                    <span th:case="'MODIFIED'"      style="color:#3182F6;">[수정 필요]</span>
+                    <span th:case="'UNCHANGED'"     style="color:#1EAF5F;">[변경 없음]</span>
+                    <span th:case="'CONFLICT_ERROR'" style="color:#F04452;">[충돌 오류]</span>
+                </span>
+            </p>
+
+            <p style="margin: 0 0 4px; color: #6B7684; font-size: 13px;">
+                레코드 타입: TXT &nbsp;|&nbsp; 호스트: <span th:text="${response.domain()}"></span>
+            </p>
+
+            <th:block th:if="${response.spf().status().name() == 'CONFLICT_ERROR'}">
+                <p style="color: #F04452; font-size: 13px;" th:text="${response.spf().errorMessage()}"></p>
+            </th:block>
+
+            <th:block th:unless="${response.spf().status().name() == 'CONFLICT_ERROR'}">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+                    <tr>
+                        <td style="width: 72px; color: #6B7684; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">AS-IS</td>
+                        <td style="padding: 5px 0; color: #6B7684;">
+                            <span th:if="${response.spf().currentRecord() != null}"
+                                  th:text="${response.spf().currentRecordAbbreviated()}"></span>
+                            <span th:unless="${response.spf().currentRecord() != null}"
+                                  style="font-style: italic;">미설정</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td style="width: 72px; color: #3182F6; font-weight: 700; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">TO-BE</td>
+                        <td style="padding: 5px 0;">
+                            <span th:utext="${response.spf().recommendedRecordHighlighted()}"></span>
+                        </td>
+                    </tr>
+                </table>
+                <p th:if="${!response.spf().addedIps().isEmpty()}"
+                   style="font-size: 12px; color: #3182F6; margin-top: 4px;">
+                    ▸ 추가 항목:
+                    <strong th:text="${#strings.listJoin(response.spf().addedIps(), ', ')}"></strong>
+                </p>
+            </th:block>
+
+            <br>
+
+            <!-- ── 2. DKIM ── -->
+            <p style="font-size: 15px; font-weight: 700; border-bottom: 1px solid #E5E8EB; padding-bottom: 6px; margin-bottom: 12px;">
+                2. DKIM 레코드
+                <span style="font-size: 12px; font-weight: 600; margin-left: 8px;">
+                    <span th:if="${response.dkim().status().name() == 'EXISTING'}" style="color:#1EAF5F;">[기존 유지]</span>
+                    <span th:unless="${response.dkim().status().name() == 'EXISTING'}" style="color:#3182F6;">[신규 등록 필요]</span>
+                </span>
+            </p>
+
+            <p style="margin: 0 0 4px; color: #6B7684; font-size: 13px;">
+                레코드 타입: TXT &nbsp;|&nbsp; 호스트: <span th:text="${response.dkim().dnsName()}"></span>
+            </p>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+                <tr>
+                    <td style="width: 72px; color: #6B7684; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">AS-IS</td>
+                    <td style="padding: 5px 0; color: #6B7684;">
+                        <span th:if="${response.dkim().hasExistingRecord()}"
+                              th:text="${response.dkim().existingDnsValueAbbreviated()}"></span>
+                        <span th:unless="${response.dkim().hasExistingRecord()}"
+                              style="font-style: italic;">미설정</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 72px; color: #3182F6; font-weight: 700; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">TO-BE</td>
+                    <td style="padding: 5px 0;">
+                        <!-- EXISTING: 변경 없음 -->
+                        <span th:if="${response.dkim().status().name() == 'EXISTING'}"
+                              style="color: #1EAF5F;">
+                            <span th:text="${response.dkim().dnsValueAbbreviated()}"></span>
+                            &nbsp;<strong>(변경 없음)</strong>
+                        </span>
+                        <!-- NEW: 신규 생성 -->
+                        <th:block th:unless="${response.dkim().status().name() == 'EXISTING'}">
+                            <strong style="color: #3182F6;" th:text="${response.dkim().dnsValueAbbreviated()}"></strong>
+                            <br>
+                            <span style="font-size: 12px; color: #6B7684;">※ 전체 값은 결과 탭에서 복사하세요.</span>
+                        </th:block>
+                    </td>
+                </tr>
+            </table>
+
+            <br>
+
+            <!-- ── 3. DMARC ── -->
+            <p style="font-size: 15px; font-weight: 700; border-bottom: 1px solid #E5E8EB; padding-bottom: 6px; margin-bottom: 12px;">
+                3. DMARC 레코드
+                <span style="font-size: 12px; font-weight: 600; margin-left: 8px;">
+                    <span th:if="${response.dmarc().status().name() == 'NEW'}" style="color:#FF8A00;">[신규 등록 필요]</span>
+                    <span th:unless="${response.dmarc().status().name() == 'NEW'}" style="color:#1EAF5F;">[기존 유지]</span>
+                </span>
+            </p>
+
+            <p style="margin: 0 0 4px; color: #6B7684; font-size: 13px;">
+                레코드 타입: TXT &nbsp;|&nbsp; 호스트: _dmarc.<span th:text="${response.domain()}"></span>
+            </p>
+
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 8px;">
+                <tr>
+                    <td style="width: 72px; color: #6B7684; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">AS-IS</td>
+                    <td style="padding: 5px 0; color: #6B7684;">
+                        <span th:if="${response.dmarc().currentRecord() != null}"
+                              th:text="${response.dmarc().currentRecord()}"></span>
+                        <span th:unless="${response.dmarc().currentRecord() != null}"
+                              style="font-style: italic;">미설정</span>
+                    </td>
+                </tr>
+                <tr>
+                    <td style="width: 72px; color: #3182F6; font-weight: 700; padding: 5px 8px 5px 0; vertical-align: top; white-space: nowrap;">TO-BE</td>
+                    <td style="padding: 5px 0;">
+                        <strong th:if="${response.dmarc().status().name() == 'NEW'}"
+                                style="color: #3182F6;"
+                                th:text="${response.dmarc().recommendedRecord()}"></strong>
+                        <span th:unless="${response.dmarc().status().name() == 'NEW'}"
+                              th:text="${response.dmarc().recommendedRecord()}"></span>
+                    </td>
+                </tr>
+            </table>
+
+            <!-- ── 4. PTR (미설정 있을 때만) ── -->
+            <th:block th:if="${response.hasNotFoundPtr()}">
+                <br>
+                <p style="font-size: 15px; font-weight: 700; border-bottom: 1px solid #E5E8EB; padding-bottom: 6px; margin-bottom: 12px;">
+                    4. PTR 레코드 (역방향 DNS)
+                    <span style="font-size: 12px; font-weight: 600; color: #F04452; margin-left: 8px;">[설정 필요 — 2단계]</span>
+                </p>
+
+                <p style="font-size: 13px; color: #6B7684; margin-bottom: 12px;">
+                    역방향 DNS가 없으면 이메일이 스팸으로 분류될 수 있습니다.<br>
+                    아래 IP별로 ① A 레코드 등록 후 ② ISP에 PTR 등록을 요청해 주세요.
+                </p>
+
+                <th:block th:each="ptr : ${response.ptrResults()}" th:if="${ptr.status().name() == 'NOT_FOUND'}">
+                    <p style="font-size: 13px; font-weight: 700; margin: 10px 0 6px;"
+                       th:text="'▸ ' + ${ptr.ip()}"></p>
+
+                    <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                        <!-- AS-IS -->
+                        <tr>
+                            <td style="width: 72px; color: #6B7684; padding: 4px 8px 4px 0; vertical-align: top; white-space: nowrap;">AS-IS</td>
+                            <td style="padding: 4px 0; color: #6B7684; font-style: italic;">미설정</td>
+                        </tr>
+                        <!-- TO-BE: Step 1 -->
+                        <tr>
+                            <td style="width: 72px; color: #3182F6; font-weight: 700; padding: 4px 8px 4px 0; vertical-align: top; white-space: nowrap;">TO-BE</td>
+                            <td style="padding: 4px 0;">
+                                <span style="color: #3182F6; font-size: 12px; font-weight: 600;">① A 레코드 (직접 등록)</span><br>
+                                &nbsp;&nbsp;타입: A<br>
+                                &nbsp;&nbsp;호스트: <strong style="color: #3182F6;" th:text="'mail.' + ${response.domain()}"></strong><br>
+                                &nbsp;&nbsp;값: <strong style="color: #3182F6;" th:text="${ptr.ip()}"></strong>
+                                <br><br>
+                                <span style="color: #FF8A00; font-size: 12px; font-weight: 600;">② PTR 레코드 (ISP 요청)</span><br>
+                                &nbsp;&nbsp;대상 IP: <span th:text="${ptr.ip()}"></span><br>
+                                &nbsp;&nbsp;PTR 값: <strong style="color: #3182F6;" th:text="'mail.' + ${response.domain()}"></strong>
+                            </td>
+                        </tr>
+                    </table>
+                </th:block>
+            </th:block>
+
+            <br>
+            <hr style="border: none; border-top: 1px solid #E5E8EB; margin: 8px 0 16px;">
+
+            <p style="font-size: 13px; color: #6B7684;">
+                DNS 설정 완료 후 전파에는 최대 48시간이 소요될 수 있습니다.<br>
+                문의사항은 언제든지 연락 주세요.
+            </p>
+            <br>
+            <p>감사합니다.</p>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

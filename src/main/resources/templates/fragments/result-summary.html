@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<body>
+
+<div th:fragment="summary(response)">
+
+    <!-- ── SPF ── -->
+    <div style="margin-bottom: 28px;">
+        <div class="section-header">
+            <div class="section-title">
+                <span>SPF 레코드</span>
+                <span th:switch="${response.spf().status().name()}">
+                    <span th:case="'NEW'"           class="badge badge-warning">신규 생성 필요</span>
+                    <span th:case="'MODIFIED'"      class="badge badge-info">수정 필요</span>
+                    <span th:case="'UNCHANGED'"     class="badge badge-success">변경 없음</span>
+                    <span th:case="'CONFLICT_ERROR'" class="badge badge-error">충돌 오류</span>
+                </span>
+            </div>
+        </div>
+
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px;">
+            레코드 타입: <strong>TXT</strong> &nbsp;·&nbsp; 호스트: <code th:text="${response.domain()}"></code>
+        </p>
+
+        <!-- CONFLICT_ERROR -->
+        <th:block th:if="${response.spf().status().name() == 'CONFLICT_ERROR'}">
+            <div class="alert alert-error">
+                <span>⚠️</span>
+                <span th:text="${response.spf().errorMessage()}"></span>
+            </div>
+        </th:block>
+
+        <!-- 정상 케이스 AS-IS / TO-BE -->
+        <th:block th:unless="${response.spf().status().name() == 'CONFLICT_ERROR'}">
+            <div class="asistobe">
+                <!-- AS-IS -->
+                <div class="asistobe-col">
+                    <div class="asistobe-label">AS-IS</div>
+                    <div th:if="${response.spf().currentRecord() != null}"
+                         class="record-value" style="position: relative;">
+                        <span class="copy-target" th:text="${response.spf().currentRecord()}"></span>
+                        <button class="copy-btn" onclick="copyText(this)">복사</button>
+                    </div>
+                    <div th:unless="${response.spf().currentRecord() != null}" class="unset-value">미설정</div>
+                </div>
+                <!-- Arrow -->
+                <div class="asistobe-arrow">→</div>
+                <!-- TO-BE -->
+                <div class="asistobe-col">
+                    <div class="asistobe-label tobe">TO-BE</div>
+                    <div class="record-value" style="position: relative;">
+                        <span class="copy-target" th:utext="${response.spf().recommendedRecordHighlighted()}"></span>
+                        <button class="copy-btn" onclick="copyText(this)">복사</button>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${!response.spf().addedIps().isEmpty()}" class="alert alert-info" style="margin-top: 10px;">
+                <span>ℹ️</span>
+                <span>include 및 기존 레코드에 없는 IP를 TO-BE에 추가했습니다:
+                    <strong th:text="${#strings.listJoin(response.spf().addedIps(), ', ')}"></strong>
+                </span>
+            </div>
+        </th:block>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ── DKIM ── -->
+    <div style="margin-bottom: 28px;">
+        <div class="section-header">
+            <div class="section-title">
+                <span>DKIM 레코드</span>
+                <span th:switch="${response.dkim().status().name()}">
+                    <span th:case="'EXISTING'" class="badge badge-success">기존 레코드 유지</span>
+                    <span th:case="'NEW'"      class="badge badge-info">신규 생성</span>
+                </span>
+            </div>
+        </div>
+
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px;">
+            레코드 타입: <strong>TXT</strong> &nbsp;·&nbsp; 호스트: <code th:text="${response.dkim().dnsName()}"></code>
+        </p>
+
+        <div th:if="${response.dkim().status().name() == 'EXISTING'}" class="alert alert-info" style="margin-bottom: 12px;">
+            <span>ℹ️</span>
+            <span>기존 DKIM 레코드가 있어 그대로 유지합니다.</span>
+        </div>
+
+        <div class="asistobe">
+            <!-- AS-IS -->
+            <div class="asistobe-col">
+                <div class="asistobe-label">AS-IS</div>
+                <div th:if="${response.dkim().hasExistingRecord()}"
+                     class="record-value" style="position: relative;">
+                    <span class="copy-target" th:text="${response.dkim().existingDnsValue()}"></span>
+                    <button class="copy-btn" onclick="copyText(this)">복사</button>
+                </div>
+                <div th:unless="${response.dkim().hasExistingRecord()}" class="unset-value">미설정</div>
+            </div>
+            <!-- Arrow -->
+            <div class="asistobe-arrow">→</div>
+            <!-- TO-BE -->
+            <div class="asistobe-col">
+                <div class="asistobe-label tobe">TO-BE</div>
+                <!-- EXISTING: 변경 없음 -->
+                <div th:if="${response.dkim().status().name() == 'EXISTING'}" class="record-value">
+                    <span th:text="${response.dkim().dnsValue()}"></span>
+                    &nbsp;<span class="badge badge-success" style="font-size:11px;">변경 없음</span>
+                </div>
+                <!-- NEW: 새 키 -->
+                <div th:unless="${response.dkim().status().name() == 'EXISTING'}"
+                     class="record-value" style="position: relative;">
+                    <span class="copy-target">
+                        <strong style="color:var(--color-primary)" th:text="${response.dkim().dnsValue()}"></strong>
+                    </span>
+                    <button class="copy-btn" onclick="copyText(this)">복사</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Private Key 다운로드 (신규인 경우만) -->
+        <div th:if="${response.dkim().status().name() == 'NEW'}" class="record-item" style="margin-top: 10px;">
+            <div class="record-label">Private Key 다운로드</div>
+            <a th:href="${response.dkim().privateKeyDownloadUrl()}" class="download-link">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span th:text="${response.dkim().privateKeyFileName()}"></span>
+            </a>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ── DMARC ── -->
+    <div style="margin-bottom: 28px;">
+        <div class="section-header">
+            <div class="section-title">
+                <span>DMARC 레코드</span>
+                <span th:switch="${response.dmarc().status().name()}">
+                    <span th:case="'EXISTING'" class="badge badge-success">기존 레코드 유지</span>
+                    <span th:case="'NEW'"      class="badge badge-warning">신규 생성 필요</span>
+                </span>
+            </div>
+        </div>
+
+        <p style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 10px;">
+            레코드 타입: <strong>TXT</strong> &nbsp;·&nbsp; 호스트: <code th:text="'_dmarc.' + ${response.domain()}"></code>
+        </p>
+
+        <div class="asistobe">
+            <!-- AS-IS -->
+            <div class="asistobe-col">
+                <div class="asistobe-label">AS-IS</div>
+                <div th:if="${response.dmarc().currentRecord() != null}"
+                     class="record-value" style="position: relative;">
+                    <span class="copy-target" th:text="${response.dmarc().currentRecord()}"></span>
+                    <button class="copy-btn" onclick="copyText(this)">복사</button>
+                </div>
+                <div th:unless="${response.dmarc().currentRecord() != null}" class="unset-value">미설정</div>
+            </div>
+            <!-- Arrow -->
+            <div class="asistobe-arrow">→</div>
+            <!-- TO-BE -->
+            <div class="asistobe-col">
+                <div class="asistobe-label tobe">TO-BE</div>
+                <div class="record-value" style="position: relative;">
+                    <span class="copy-target">
+                        <!-- 신규인 경우 전체 볼드 -->
+                        <strong th:if="${response.dmarc().status().name() == 'NEW'}"
+                                style="color:var(--color-primary)"
+                                th:text="${response.dmarc().recommendedRecord()}"></strong>
+                        <span th:unless="${response.dmarc().status().name() == 'NEW'}"
+                              th:text="${response.dmarc().recommendedRecord()}"></span>
+                    </span>
+                    <button class="copy-btn" onclick="copyText(this)">복사</button>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${response.dmarc().status().name() == 'EXISTING'}" class="alert alert-info" style="margin-top: 10px;">
+            <span>ℹ️</span>
+            <span>기존 DMARC 레코드가 있어 그대로 유지합니다.</span>
+        </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- ── PTR ── -->
+    <div>
+        <div class="section-header">
+            <div class="section-title">
+                <span>PTR 레코드 (역방향 DNS)</span>
+                <span th:if="${response.hasNotFoundPtr()}" class="badge badge-error">미설정 항목 있음</span>
+                <span th:unless="${response.hasNotFoundPtr()}" class="badge badge-success">모두 설정됨</span>
+            </div>
+        </div>
+
+        <!-- IP별 AS-IS / TO-BE -->
+        <div th:each="ptr, iterStat : ${response.ptrResults()}" style="margin-bottom: 16px;">
+            <p style="font-size: 12px; color: var(--color-text-secondary); margin-bottom: 8px;">
+                IP: <strong th:text="${ptr.ip()}"></strong>
+            </p>
+
+            <div class="asistobe">
+                <!-- AS-IS -->
+                <div class="asistobe-col">
+                    <div class="asistobe-label">AS-IS</div>
+                    <div th:if="${ptr.status().name() == 'EXISTS'}"
+                         class="record-value" style="position: relative;">
+                        <span class="copy-target" th:text="${ptr.ptrRecord()}"></span>
+                        <button class="copy-btn" onclick="copyText(this)">복사</button>
+                    </div>
+                    <div th:unless="${ptr.status().name() == 'EXISTS'}" class="unset-value">미설정</div>
+                </div>
+                <!-- Arrow -->
+                <div class="asistobe-arrow">→</div>
+                <!-- TO-BE -->
+                <div class="asistobe-col">
+                    <div class="asistobe-label tobe">TO-BE</div>
+                    <div th:if="${ptr.status().name() == 'EXISTS'}" class="record-value">
+                        <span th:text="${ptr.ptrRecord()}"></span>
+                        &nbsp;<span class="badge badge-success" style="font-size:11px;">변경 없음</span>
+                    </div>
+                    <div th:unless="${ptr.status().name() == 'EXISTS'}" class="record-value" style="position: relative;">
+                        <span class="copy-target">
+                            <strong style="color:var(--color-primary)" th:text="'mail.' + ${response.domain()}"></strong>
+                        </span>
+                        <button class="copy-btn" onclick="copyText(this)">복사</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PTR 미설정 — A레코드 → PTR 단계 가이드 -->
+            <div th:if="${ptr.status().name() == 'NOT_FOUND'}" style="margin-top: 12px;">
+                <div class="alert alert-warning" style="margin-bottom: 10px; font-size: 13px;">
+                    <span>⚠️</span>
+                    <span>PTR 레코드 등록을 위해 아래 2단계를 순서대로 진행해 주세요.</span>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <!-- Step 1 -->
+                    <div class="record-item">
+                        <div class="record-label" style="color: var(--color-primary); margin-bottom: 8px;">① A 레코드 등록 (직접)</div>
+                        <table style="width: 100%; font-size: 12px;">
+                            <tr><td style="color:var(--color-text-secondary); width:70px; padding: 2px 0;">타입</td><td><strong>A</strong></td></tr>
+                            <tr><td style="color:var(--color-text-secondary); padding: 2px 0;">호스트</td>
+                                <td style="font-family:monospace;" th:text="'mail.' + ${response.domain()}"></td></tr>
+                            <tr><td style="color:var(--color-text-secondary); padding: 2px 0;">값</td>
+                                <td style="font-family:monospace;" th:text="${ptr.ip()}"></td></tr>
+                        </table>
+                    </div>
+                    <!-- Step 2 -->
+                    <div class="record-item">
+                        <div class="record-label" style="color: var(--color-warning-text); margin-bottom: 8px;">② PTR 등록 요청 (ISP)</div>
+                        <table style="width: 100%; font-size: 12px;">
+                            <tr><td style="color:var(--color-text-secondary); width:70px; padding: 2px 0;">대상 IP</td>
+                                <td style="font-family:monospace;" th:text="${ptr.ip()}"></td></tr>
+                            <tr><td style="color:var(--color-text-secondary); padding: 2px 0;">PTR 값</td>
+                                <td>
+                                    <div class="record-value" style="position:relative; margin:0; padding: 6px 36px 6px 8px;">
+                                        <span class="copy-target" th:text="'mail.' + ${response.domain()}"></span>
+                                        <button class="copy-btn" onclick="copyText(this)">복사</button>
+                                    </div>
+                                </td></tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div th:if="${!iterStat.last}" class="divider" style="margin-top: 16px;"></div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

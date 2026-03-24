@@ -1,0 +1,12 @@
+spring:
+  application:
+    name: dns-automation
+  thymeleaf:
+    cache: false
+    mode: HTML
+
+server:
+  port: 8080
+
+dkim:
+  key-storage-path: /Users/hgryu/dkim/keys

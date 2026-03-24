@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'DNS 점검 결과 — ' + ${response.domain()}">DNS 점검 결과</title>
+    <link rel="stylesheet" th:href="@{/css/toss-style.css}">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="header-logo">D</div>
+        <a href="/" class="header-title">DNS 이메일 점검</a>
+        <div style="margin-left: auto;">
+            <a href="/" class="btn btn-secondary btn-sm">← 다시 점검</a>
+        </div>
+    </div>
+</header>
+
+<main class="page">
+    <!-- Result Header -->
+    <div class="result-header">
+        <div class="result-domain" th:text="${response.domain()}">example.com</div>
+        <div class="result-meta">
+            <!-- SPF 뱃지 -->
+            <span th:switch="${response.spf().status().name()}">
+                <span th:case="'NEW'" class="badge badge-warning">SPF 신규</span>
+                <span th:case="'MODIFIED'" class="badge badge-info">SPF 수정필요</span>
+                <span th:case="'UNCHANGED'" class="badge badge-success">SPF 정상</span>
+                <span th:case="'CONFLICT_ERROR'" class="badge badge-error">SPF 충돌</span>
+            </span>
+            <!-- DKIM 뱃지 -->
+            <span th:switch="${response.dkim().status().name()}">
+                <span th:case="'EXISTING'" class="badge badge-success">DKIM 정상</span>
+                <span th:case="'NEW'"      class="badge badge-info">DKIM 신규</span>
+            </span>
+            <!-- DMARC 뱃지 -->
+            <span th:switch="${response.dmarc().status().name()}">
+                <span th:case="'EXISTING'" class="badge badge-success">DMARC 정상</span>
+                <span th:case="'NEW'" class="badge badge-warning">DMARC 신규</span>
+            </span>
+            <!-- PTR 뱃지 -->
+            <span th:if="${response.hasNotFoundPtr()}" class="badge badge-error">PTR 미설정</span>
+            <span th:unless="${response.hasNotFoundPtr()}" class="badge badge-success">PTR 정상</span>
+        </div>
+    </div>
+
+    <div class="card">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('result', this)">결과</button>
+            <button class="tab-btn" onclick="switchTab('template', this)">안내 템플릿</button>
+        </div>
+
+        <!-- Tab: 결과 -->
+        <div id="tab-result" class="tab-panel active">
+            <div th:replace="~{fragments/result-summary :: summary(${response})}"></div>
+        </div>
+
+        <!-- Tab: 안내 템플릿 -->
+        <div id="tab-template" class="tab-panel">
+            <div th:replace="~{fragments/email-template :: emailTemplate(${response})}"></div>
+        </div>
+    </div>
+</main>
+
+<script>
+    function switchTab(name, btn) {
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tab-' + name).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    function copyText(btn) {
+        const valueEl = btn.closest('.record-value');
+        const text = valueEl.querySelector('.copy-target').textContent.trim();
+        navigator.clipboard.writeText(text).then(() => {
+            btn.textContent = '복사됨';
+            setTimeout(() => { btn.textContent = '복사'; }, 1500);
+        });
+    }
+</script>
+
+</body>
+</html>

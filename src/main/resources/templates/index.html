@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DNS 이메일 점검</title>
+    <link rel="stylesheet" th:href="@{/css/toss-style.css}">
+</head>
+<body>
+
+<header class="header">
+    <div class="header-inner">
+        <div class="header-logo">D</div>
+        <a href="/" class="header-title">DNS 이메일 점검</a>
+    </div>
+</header>
+
+<main class="page">
+    <div style="padding-top: 16px;">
+        <h1 class="page-title">이메일 발송 DNS 점검</h1>
+        <p class="page-subtitle">도메인과 발송 서버 IP를 입력하면 SPF, DKIM, DMARC, PTR 설정을 자동으로 분석하고 설정 가이드를 생성합니다.</p>
+    </div>
+
+    <div class="card">
+        <form action="/check" method="post">
+            <div class="form-group">
+                <label class="form-label" for="domain">도메인</label>
+                <input class="form-input" type="text" id="domain" name="domain"
+                       placeholder="example.com" required autocomplete="off">
+                <p class="form-hint">이메일 발송에 사용하는 도메인을 입력하세요.</p>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="publicIps">발송 서버 IP</label>
+                <input class="form-input" type="text" id="publicIps" name="publicIps"
+                       placeholder="1.2.3.4, 5.6.7.8" required autocomplete="off">
+                <p class="form-hint">이메일 발송 서버의 공인 IP를 쉼표(,)로 구분하여 입력하세요.</p>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 28px;">
+                <label class="form-label" for="selector">DKIM 셀렉터</label>
+                <input class="form-input" type="text" id="selector" name="selector"
+                       placeholder="sender" required autocomplete="off">
+                <p class="form-hint">DKIM 레코드 조회에 사용할 셀렉터 이름입니다. (예: sender, mail, dkim)</p>
+            </div>
+
+            <button type="submit" class="btn btn-primary">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                </svg>
+                점검 시작
+            </button>
+        </form>
+    </div>
+
+    <div class="card card-sm" style="background: var(--color-primary-light); box-shadow: none;">
+        <p style="font-size: 13px; color: var(--color-primary); line-height: 1.7;">
+            <strong>점검 항목:</strong>
+            &nbsp;SPF (발송 서버 IP 인증) &nbsp;·&nbsp;
+            DKIM (이메일 서명 키 생성) &nbsp;·&nbsp;
+            DMARC (이메일 정책 설정) &nbsp;·&nbsp;
+            PTR (역방향 DNS 조회)
+        </p>
+    </div>
+</main>
+
+</body>
+</html>
